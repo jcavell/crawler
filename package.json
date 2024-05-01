@@ -8,7 +8,8 @@
         "crawlee": "^3.0.0",
         "fs": "^0.0.1-security",
         "playwright": "*",
-        "puppeteer": "^22.6.1"
+        "puppeteer": "^22.6.1",
+        "sharp": "^0.33.3"
     },
     "devDependencies": {
         "@apify/tsconfig": "^0.1.0",
@@ -22,6 +23,7 @@
         "start:kajabi": "tsx src/kajabi.ts",
         "start:processKajabi": "tsx src/processKajabi.ts",
         "start:substack": "tsx src/substack.ts",
+        "start:processSubstack": "tsx src/processSubstack.ts",
         "build": "tsc",
         "test": "echo \"Error: oops, the actor has no tests yet, sad!\" && exit 1"
     },

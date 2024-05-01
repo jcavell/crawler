@@ -1,5 +1,4 @@
-import * as fs from "fs";
-import { default as axios } from "axios";
+import { copyToAstro, downloadImage, resizeImage, deleteFiles, createImageNameFromTitle, getContentAsJSON } from "./processor.js";
 
 const crawlerCardsDir = "./storage/datasets/kajabi/cards/";
 const crawlerCheckoutsDir = "./storage/datasets/kajabi/checkouts/";
@@ -10,53 +9,35 @@ const astroCardsDir = astroProjectRoot + "src/content/courseCards/";
 const astroCheckoutsDir = astroProjectRoot + "src/content/courseCheckouts/";
 const astroImagesDir = astroProjectRoot + "public/images/courses/";
 
-async function downloadImage(url, filepath) {
-  console.log("Downloading " + url);
 
-  const response = await axios({
-    url,
-    method: "GET",
-    responseType: "stream",
-  });
-  return new Promise((resolve, reject) => {
-    response.data
-      .pipe(fs.createWriteStream(filepath))
-      .on("error", reject)
-      .once("close", () => resolve(filepath));
-  });
-}
 
 const getAndDownloadImages = async () => {
-  const files = fs.readdirSync(crawlerCardsDir);
+  const cards = getContentAsJSON(crawlerCardsDir);
   const promises = [];
 
-  files.forEach((file) => {
-    const data = fs.readFileSync(crawlerCardsDir + file, "utf8");
-    const json = JSON.parse(data);
-    const imageUrl = json["imageURL"];
-    const imageName = imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
+  cards.forEach((card) => {
+    const imageUrl = card["imageURL"];
+    const imageName = createImageNameFromTitle(card["title"], imageUrl);
 
     promises.push(downloadImage(imageUrl, crawlerImagesDir + imageName));
   });
+
   return Promise.all(promises);
 };
 
-const deleteFiles = (dir: string) => {
-  const files = fs.readdirSync(dir);
+const resizeImages = async () => {
+  const cards = getContentAsJSON(crawlerCardsDir);
+  const promises = [];
 
-  files.forEach((file) => {
-    fs.rmSync(dir + file);
-  });
-  console.log("Deleted files from " + dir);
-};
+  cards.forEach((card) => {
+    const imageName = createImageNameFromTitle(card["title"], card["imageURL"]);
 
-const copyToAstro = async (srcDir: string, destDir: string) => {
-  const files = fs.readdirSync(srcDir);
-  files.forEach((file) => {
-    fs.copyFileSync(srcDir + file, destDir + file);
+    promises.push(resizeImage(crawlerImagesDir + imageName, 300, 200));
   });
-  console.log("Copied files to Astro from " + srcDir + " to " + destDir);
-};
+
+  return Promise.all(promises);
+}
+
 
 const run = async () => {
   // Delete old destination Astro files
@@ -64,8 +45,9 @@ const run = async () => {
   deleteFiles(astroCardsDir);
   deleteFiles(astroImagesDir);
 
-  // Download Kajabi card images
+  // Download Kajabi card images then resize them
   await getAndDownloadImages();
+  await resizeImages();
 
   // Copy card and checkout data and images to Astro
   copyToAstro(crawlerCardsDir, astroCardsDir);

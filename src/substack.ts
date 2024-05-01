@@ -8,8 +8,24 @@ const crawler = new PuppeteerCrawler({
     parseWithCheerio,
     infiniteScroll,
   }) => {
+    const url = request.url;
+
+    //await Dataset.open("substack").then((d) => d.drop);
+    const dataset = await Dataset.open("substack/articles");
+
+    const existing = await dataset.map(async (item, index) => {
+     return item['url'];
+    });
+
+    if (existing.includes(url)){
+      console.log("IGNORING EXISTING ARTICLE " + url);
+      return;
+    }
+
+
     await infiniteScroll();
     const $ = await parseWithCheerio();
+
 
     if (request.label === "ARTICLE") {
       // ARTICLE PAGE
@@ -17,7 +33,6 @@ const crawler = new PuppeteerCrawler({
       // Wait for the article to render
       await page.waitForSelector(".single-post");
 
-      const url = request.url;
 
       const body = $(".body p, .body span").contents();
 
@@ -42,7 +57,10 @@ const crawler = new PuppeteerCrawler({
         body.text().includes("Register Here") ||
         body.text().includes("Register here");
 
-      if (!isWebinar) {
+      if(isWebinar){
+        console.log("IGNORING WEBINAR AD " + url);
+      }
+      else {
         const filteredBody = body.filter(function () {
           return (
             this.nodeType === 3 &&
@@ -71,7 +89,7 @@ const crawler = new PuppeteerCrawler({
           });
 
         
-        Dataset.pushData({
+          dataset.pushData({
           url: url,
           pubDate: pubDate ? { day: pubDate[1], month: pubDate[2], year: pubDate[3] } : {},
           title: title,
