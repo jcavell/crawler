@@ -1,22 +1,5 @@
 import * as fs from "fs";
-import { default as axios } from "axios";
 import sharp from 'sharp';
-
-export async function downloadImage(url:string, filepath:string) {
-  console.log("Downloading " + url);
-
-  const response = await axios({
-    url,
-    method: "GET",
-    responseType: "stream",
-  });
-  return new Promise((resolve, reject) => {
-    response.data
-      .pipe(fs.createWriteStream(filepath))
-      .on("error", reject)
-      .once("close", () => resolve(filepath));
-  });
-}
 
 export function getContentAsJSON(contentDir:string) {
     return fs.readdirSync(contentDir).map((f) => {
@@ -25,25 +8,26 @@ export function getContentAsJSON(contentDir:string) {
     });
   }
 
-export function createImageNameFromTitle (title:string, imageURL:string) {
-    const suffix = imageURL.substring(imageURL.lastIndexOf('.'));
-    return title.toLowerCase().replace(/ /g, "-").replace(/\?/g, "") + suffix;
+export function getTitleURI (title:string) {
+    return title.toLowerCase().replace(/ /g, "-").replace(/[^a-z-0-9]/g, "");
     }
 
 export function getResizedPath (src:string, width:number, height:number) {
     const prefix = src.substring(0, src.lastIndexOf('.'));
     const suffix = src.substring(src.lastIndexOf('.'));
-    return prefix + "_" + width + "_" + height + "_" + suffix;
+    return prefix + "-" + width + "-" + height + suffix;
   }
   
   
   export async function resizeImage(src:string, width:number, height:number){
+    const resizedPath = getResizedPath(src, width, height);
+    console.log(`Resizing ${src} to ${resizedPath}`);
     return sharp(src)
     .resize(width, height)
-    .toFile(getResizedPath(src, width, height));
+    .toFile(resizedPath);
   }
 
-  export function deleteFiles (dir: string) {
+    export function deleteFiles (dir: string) {
     const files = fs.readdirSync(dir);
   
     files.forEach((file) => {

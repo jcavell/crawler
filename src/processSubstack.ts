@@ -1,41 +1,76 @@
-import { copyToAstro, downloadImage, resizeImage, deleteFiles, createImageNameFromTitle, getContentAsJSON } from "./processor.js";
+import { copyToAstro, resizeImage, deleteFiles, getTitleURI, getContentAsJSON } from "./processor.js";
+import * as fs from "fs";
+import { default as axios } from "axios";
+import mime from 'mime';
 
 const crawlerArticlesDir = "./storage/datasets/substack/articles/";
-const crawlerImagesDir = "./storage/datasets/substack/images/";
+const crawlerBlogImagesDir = "./storage/datasets/substack/images/";
 
 const astroProjectRoot = "/Users/jonnycavell/dev/naomifisherpsychology/";
-const astroSubstackDir = astroProjectRoot + "src/content/blog/";
-const astroImagesDir = astroProjectRoot + "public/images/blog/";
+const astroArticlesDir = astroProjectRoot + "src/content/blog/";
+const astroBlogImagesDir = astroProjectRoot + "public/images/blog/";
 
+
+export async function downloadSubstackImage(articleFileName:string) {
+
+  console.log("Downloading image for card " + articleFileName);
+
+  const articleData = fs.readFileSync(crawlerArticlesDir + articleFileName, "utf8");
+    const articleJSON = JSON.parse(articleData);
+    const images = articleJSON["images"];
+
+    // Don't bother processing if there is no image
+    if(images.length == 0) return;
+
+    // Just use the first image
+    const url = articleJSON["images"][0];
+
+    const titleURI = getTitleURI(articleJSON["title"]);
+
+  const response = await axios({
+    url,
+    method: "GET",
+    responseType: "stream",
+  });
+
+  return new Promise((resolve, reject) => {
+
+    const imageExtension = mime.getExtension(response.headers['content-type']);
+    const imageFileName = titleURI + '.' + imageExtension;
+    const imageFilepath = crawlerBlogImagesDir + imageFileName;
+
+    // Write the data back
+    articleJSON['imageFileName'] = imageFileName;    
+    fs.writeFileSync(crawlerArticlesDir + articleFileName, JSON.stringify(articleJSON));
+
+    console.log(`Getting image from ${url} and saving to ${imageFilepath}`);
+
+    return response.data
+      .pipe(fs.createWriteStream(imageFilepath))
+      .on("error", reject)
+      .once("close", () => resolve(imageFilepath));
+  });
+}
 const getAndDownloadImages = async () => {
-  const articles = getContentAsJSON(crawlerArticlesDir);
   const promises = [];
 
-  articles.forEach((article) => {
-
-    const images = article["images"] as string[];
-
-    images.forEach((imageUrl, index:number) => {
-      const imageName = createImageNameFromTitle(`${article["title"]}_${index}`, imageUrl);
-      promises.push(downloadImage(imageUrl, crawlerImagesDir + imageName));
-    });
+  fs.readdirSync(crawlerArticlesDir).map((f) => {
+    promises.push(downloadSubstackImage(f));
   });
 
   return Promise.all(promises);
 };
+
 
 const resizeImages = async () => {
   const articles = getContentAsJSON(crawlerArticlesDir);
   const promises = [];
 
   articles.forEach((article) => {
+    const imageFileName = article["imageFileName"];
 
-    const images = article["images"] as string[];
-
-    images.forEach((imageUrl, index:number) => {
-      const imageName = createImageNameFromTitle(`${article["title"]}_${index}`, imageUrl);
-      promises.push(resizeImage(crawlerImagesDir + imageName, 300, 200));
-    });
+    // Only resize if there is an image
+    if(imageFileName) promises.push(resizeImage(crawlerBlogImagesDir + imageFileName, 300, 200));
   });
 
   return Promise.all(promises);
@@ -44,16 +79,16 @@ const resizeImages = async () => {
 
 const run = async () => {
   // Delete old destination Astro files
-  deleteFiles(astroSubstackDir);
-  deleteFiles(astroImagesDir);
+  deleteFiles(astroArticlesDir);
+  deleteFiles(astroBlogImagesDir);
 
   // Download substack images then resize them
   await getAndDownloadImages();
   await resizeImages();
 
   // Copy card and checkout data and images to Astro
-  copyToAstro(crawlerArticlesDir, astroSubstackDir);
-  copyToAstro(crawlerImagesDir, astroImagesDir);
+  copyToAstro(crawlerArticlesDir, astroArticlesDir);
+  copyToAstro(crawlerBlogImagesDir, astroBlogImagesDir);
 };
 
 run();
