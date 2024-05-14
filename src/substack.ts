@@ -1,4 +1,20 @@
 import { PuppeteerCrawler, Dataset } from "crawlee";
+import yargs from 'yargs'
+
+import { hideBin } from 'yargs/helpers'
+
+const args = yargs(hideBin(process.argv)).parse();
+const deleteExisting = args.deleteExisting;
+const maxRequestsToCrawl = args.maxRequestsToCrawl || 200;
+
+console.log("deleteExisting: " + deleteExisting);
+console.log("max requests: " + maxRequestsToCrawl);
+
+if (deleteExisting === 'true') {
+  await (await Dataset.open("substack/articles")).drop();
+  console.log("Deleted dataset");
+
+}
 
 const crawler = new PuppeteerCrawler({
   requestHandler: async ({
@@ -9,30 +25,27 @@ const crawler = new PuppeteerCrawler({
     infiniteScroll,
   }) => {
     const url = request.url;
+    // console.log("Processing URL " + url + " with label " + request.label);
 
-    //await Dataset.open("substack").then((d) => d.drop);
     const dataset = await Dataset.open("substack/articles");
 
-    const existing = await dataset.map(async (item, index) => {
-     return item['url'];
-    });
+    // const existing = await dataset.map(async (item, index) => {
+    //  return item['url'];
+    // });
 
-    if (existing.includes(url)){
-      console.log("IGNORING EXISTING ARTICLE " + url);
-      return;
-    }
-
+    // if (existing.includes(url)){
+    //   console.log("Ignoring existing article " + url);
+    //   return;
+    // }
 
     await infiniteScroll();
     const $ = await parseWithCheerio();
-
 
     if (request.label === "ARTICLE") {
       // ARTICLE PAGE
 
       // Wait for the article to render
       await page.waitForSelector(".single-post");
-
 
       const body = $(".body p, .body span").contents();
 
@@ -58,7 +71,7 @@ const crawler = new PuppeteerCrawler({
         body.text().includes("Register here");
 
       if(isWebinar){
-        console.log("IGNORING WEBINAR AD " + url);
+        console.log("Ignoring webinar / ad " + url);
       }
       else {
         const filteredBody = body.filter(function () {
@@ -91,14 +104,14 @@ const crawler = new PuppeteerCrawler({
         
           dataset.pushData({
           url: url,
-          pubDate: pubDate ? { day: pubDate[1], month: pubDate[2], year: pubDate[3] } : {},
+          pubDate: pubDate ? { day: pubDate[2], month: pubDate[1], year: pubDate[3] } : {},
           title: title,
           subtitle: subtitle,
           images: images,
           paragraphs: paragraphs,
         });
 
-        console.log("Article: " + title);
+        console.log("***Saved post: " + title);
       }
     } else {
       // ARCHIVE LISTING PAGE?
@@ -117,7 +130,7 @@ const crawler = new PuppeteerCrawler({
       console.log(archive);
     }
   },
-  maxRequestsPerCrawl: 200,
+  maxRequestsPerCrawl: maxRequestsToCrawl,
 });
 
 await crawler.run(["https://naomicfisher.substack.com/archive"]);
