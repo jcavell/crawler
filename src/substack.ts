@@ -13,7 +13,6 @@ console.log("max requests: " + maxRequestsToCrawl);
 if (deleteExisting === 'true') {
   await (await Dataset.open("substack/articles")).drop();
   console.log("Deleted dataset");
-
 }
 
 const crawler = new PuppeteerCrawler({

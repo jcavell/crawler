@@ -10,7 +10,7 @@ const crawlerImagesDir = "./storage/datasets/kajabi/images/";
 const astroProjectRoot = "/Users/jonnycavell/dev/naomifisherpsychology/";
 const astroCardsDir = astroProjectRoot + "src/content/courseCards/";
 const astroCheckoutsDir = astroProjectRoot + "src/content/courseCheckouts/";
-const astroImagesDir = astroProjectRoot + "public/images/courses/";
+const astroImagesDir = astroProjectRoot + "public/images/kajabi/";
 
 
 export async function downloadKajabiImage(cardFileName:string) {
@@ -36,7 +36,7 @@ export async function downloadKajabiImage(cardFileName:string) {
 
     // Write the data back
     cardsJSON['imageFileName'] = imageFileName;    
-    fs.writeFileSync(crawlerCardsDir + cardFileName, JSON.stringify(cardsJSON));
+    fs.writeFileSync(crawlerCardsDir + cardFileName, JSON.stringify(cardsJSON, undefined, 4));
 
     console.log(`Saving image to ${imageFilepath}`);
 
@@ -95,9 +95,9 @@ const run = async () => {
   deleteFiles(astroCardsDir);
   deleteFiles(astroImagesDir);
 
-  // Download Kajabi card images then resize them
+  // Download Kajabi card images
   await getAndDownloadImages();
-  await resizeImages();
+  // await resizeImages();
 
   // Copy card and checkout data and images to Astro
   copyUniqueCardsToAstro(crawlerCardsDir, astroCardsDir);

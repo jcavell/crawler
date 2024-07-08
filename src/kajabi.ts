@@ -1,11 +1,9 @@
 import { PlaywrightCrawler, Dataset } from "crawlee";
+import { deleteFiles } from "./processor.js";
 
 const crawler = new PlaywrightCrawler({
   requestHandler: async ({ page, request, enqueueLinks, parseWithCheerio }) => {
     const $ = await parseWithCheerio();
-
-    await Dataset.open("kajabi/cards").then((d) => d.drop);
-    await Dataset.open("kajabi/checkouts").then((d) => d.drop);
 
     const cardsDataset = await Dataset.open("kajabi/cards");
     const checkoutDataset = await Dataset.open("kajabi/checkouts");
@@ -18,9 +16,11 @@ const crawler = new PlaywrightCrawler({
 
       const url = request.url;
       const descriptions = $(".checkout-content")
-        .find(".checkout-content-body p")
+        .find(
+          ".checkout-content-body p, .checkout-content-body h3, .checkout-content-body li"
+        )
         .map(function (i, el) {
-          return $(this).text();
+          return el.name + ":" + $(this).text();
         })
         .toArray();
 
@@ -72,7 +72,13 @@ const crawler = new PlaywrightCrawler({
   maxRequestsPerCrawl: 200,
 });
 
+// Script starts here
+
+deleteFiles("./storage/datasets/kajabi/checkouts/");
+deleteFiles("./storage/datasets/kajabi/cards/");
+
 await crawler.run([
   "https://courses.naomifisher.co.uk",
   "https://courses.naomifisher.co.uk/low-demand-parenting",
+  "https://courses.naomifisher.co.uk/professionals"
 ]);

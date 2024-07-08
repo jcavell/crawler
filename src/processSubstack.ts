@@ -2,6 +2,7 @@ import { copyToAstro, resizeImage, deleteFiles, getTitleURI, getContentAsJSON } 
 import * as fs from "fs";
 import { default as axios } from "axios";
 import mime from 'mime';
+import 'source-map-support/register'
 
 const crawlerArticlesDir = "./storage/datasets/substack/articles/";
 const crawlerBlogImagesDir = "./storage/datasets/substack/images/";
@@ -13,7 +14,7 @@ const astroBlogImagesDir = astroProjectRoot + "public/images/blog/";
 
 export async function downloadSubstackImage(articleFileName:string) {
 
-  console.log("Downloading image for card " + articleFileName);
+  console.log("Downloading image for article " + articleFileName);
 
   const articleData = fs.readFileSync(crawlerArticlesDir + articleFileName, "utf8");
     const articleJSON = JSON.parse(articleData);
@@ -41,7 +42,7 @@ export async function downloadSubstackImage(articleFileName:string) {
 
     // Write the data back
     articleJSON['imageFileName'] = imageFileName;    
-    fs.writeFileSync(crawlerArticlesDir + articleFileName, JSON.stringify(articleJSON));
+    fs.writeFileSync(crawlerArticlesDir + articleFileName, JSON.stringify(articleJSON, undefined, 4));
 
     console.log(`Getting image from ${url} and saving to ${imageFilepath}`);
 
